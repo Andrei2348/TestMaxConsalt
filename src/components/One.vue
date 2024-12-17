@@ -1,86 +1,86 @@
-<template>  
-  <div>  
-    <v-btn @click="addPost">Добавить пост</v-btn>  
-    <v-data-table :headers="headers" :items="posts" @click:row="openDrawer" pagination>  
-      <template v-slot:item.actions="{ item }">  
-        <v-icon @click.stop="confirmDelete(item.id)">mdi-delete</v-icon>  
-      </template>  
-    </v-data-table>  
-    <v-dialog v-model="dialog" max-width="600px">  
-      <v-card>  
-        <v-card-title>  
-          <span>{{ editMode ? 'Редактирование поста' : 'Добавление поста' }}</span>  
-        </v-card-title>  
-        <v-card-text>  
-          <v-text-field v-model="postData.title" label="Заголовок"></v-text-field>  
-          <v-textarea v-model="postData.body" label="Текст поста"></v-textarea>  
-        </v-card-text>  
-        <v-card-actions>  
-          <v-btn @click="savePost">Сохранить</v-btn>  
-          <v-btn @click="dialog = false">Закрыть</v-btn>  
-        </v-card-actions>  
-      </v-card>  
-    </v-dialog>  
-  </div>  
-</template>  
+<template>
+  <v-container>
+    <v-btn @click="addPost" class="mb-4">Добавить пост</v-btn>
+    <v-data-table :headers="headers" :items="posts" @click:row="selectPost" class="elevation-1">
+      <template v-slot:item.action="{ item }">
+        <v-icon @click.stop="editPost(item)" class="mr-2">edit</v-icon>
+        <v-icon @click.stop="deletePost(item)">delete</v-icon>
+      </template>
+    </v-data-table>
+    <v-dialog v-model="dialog" max-width="600px">
+      <v-card>
+        <v-card-title>Редактировать Пост</v-card-title>
+        <v-card-text>
+          <v-text-field v-model="editedPost.title" label="Заголовок"></v-text-field>
+          <v-text-field v-model="editedPost.body" label="Описание"></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn color="primary" @click="savePost">Сохранить</v-btn>
+          <v-btn color="secondary" @click="closeDialog">Отмена</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+  </v-container>
+</template>
 
-<script>  
-import axios from 'axios';  
+<script>
+import axios from 'axios';
 
-export default {  
-  data() {  
-    return {  
-      posts: [],  
-      headers: [  
-        { text: 'ID', value: 'id' },  
-        { text: 'Заголовок', value: 'title' },  
-        { text: 'Текст', value: 'body' },  
-        { text: 'Действия', value: 'actions', sortable: false },  
-      ],  
-      dialog: false,  
-      editMode: false,  
-      postData: {  
-        id: null,  
-        title: '',  
-        body: '',  
-      },  
-    };  
-  },  
-  created() {  
-    this.fetchPosts();  
-  },  
-  methods: {  
-    async fetchPosts() {  
-      const response = await axios.get('https://jsonplaceholder.typicode.com/posts');  
-      this.posts = response.data;  
-    },  
-    openDrawer(post) {  
-      this.selectedPost = post;  
-      this.dialog = true;  
-    },  
-    async savePost() {  
-      if (this.editMode) {  
-        await axios.put(`https://jsonplaceholder.typicode.com/posts/${this.postData.id}`, this.postData);  
-      } else {  
-        await axios.post('https://jsonplaceholder.typicode.com/posts', this.postData);  
-        this.posts.push(this.postData);  
-      }  
-      this.dialog = false;  
-      this.fetchPosts(); // Обновление постов  
-    },  
-    addPost() {  
-      this.editMode = false;  
-      this.postData = { id: null, title: '', body: '' };  
-      this.dialog = true;  
-    },  
-    async confirmDelete(id) {  
-      // Модальное окно подтверждения удаления  
-      const isConfirmed = confirm('Вы уверены, что хотите удалить этот пост?');  
-      if (isConfirmed) {  
-        await axios.delete(`https://jsonplaceholder.typicode.com/posts/${id}`);  
-        this.fetchPosts();  
-      }  
-    },  
-  },  
-};  
+export default {
+  data() {
+    return {
+      posts: [],
+      headers: [
+        { text: 'ID', value: 'id' },
+        { text: 'Заголовок', value: 'title' },
+        { text: 'Описание', value: 'body' },
+        { text: 'Действия', value: 'action', sortable: false },
+      ],
+      dialog: false,
+      editedPost: { id: null, title: '', body: '' },
+    };
+  },
+  created() {
+    this.fetchPosts();
+  },
+  methods: {
+    fetchPosts() {
+      axios.get('https://jsonplaceholder.typicode.com/posts').then(response => {
+        this.posts = response.data;
+      });
+    },
+    selectPost(post) {
+      this.editedPost = { ...post };
+      this.dialog = true;
+    },
+    editPost(post) {
+      this.selectPost(post);
+    },
+    deletePost(post) {
+      if (confirm('Вы уверены, что хотите удалить этот пост?')) {
+        this.posts = this.posts.filter(p => p.id !== post.id);
+        alert('Пост успешно удален');
+      }
+    },
+    savePost() {
+      const index = this.posts.findIndex(p => p.id === this.editedPost.id);
+      if (index !== -1) {
+        this.posts.splice(index, 1, this.editedPost);
+        alert('Пост успешно отредактирован');
+      } else {
+        this.posts.push({ ...this.editedPost, id: Date.now() });
+        alert('Пост успешно добавлен');
+      }
+      this.closeDialog();
+    },
+    closeDialog() {
+      this.dialog = false;
+      this.editedPost = { id: null, title: '', body: '' };
+    },
+    addPost() {
+      this.editedPost = { id: null, title: '', body: '' };
+      this.dialog = true;
+    },
+  },
+};
 </script>
